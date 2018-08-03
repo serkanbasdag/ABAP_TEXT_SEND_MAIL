@@ -1,0 +1,62 @@
+REPORT ZSB_TEXT_SEND_MAIL.
+
+
+DATA: gt_alicibilgileri  TYPE STANDARD TABLE OF somlreci1,
+      gs_alicibilgileri  TYPE somlreci1,
+      gt_mailicerigi     TYPE STANDARD TABLE OF solisti1,
+      gs_mailicerigi     TYPE solisti1,
+      gt_icerikbilgileri TYPE STANDARD TABLE OF sopcklsti1,
+      gs_icerikbilgileri TYPE sopcklsti1,
+      gs_mailozellikleri TYPE sodocchgi1,
+      gt_data TYPE TABLE OF ZPERS_BILG,
+      gv_gonderen TYPE soextreci1-receiver VALUE 'abc@xyz.com'.
+
+
+PARAMETERS: recipient   LIKE   soextreci1-receiver LOWER CASE OBLIGATORY,
+                            LINE1(50) LOWER CASE.
+
+* Mail recipient.
+gs_alicibilgileri-receiver = recipient.
+gs_alicibilgileri-rec_type = 'U'.
+APPEND gs_alicibilgileri TO gt_alicibilgileri.
+
+
+
+* Mailin Konu kısmı ve özellikleri
+gs_mailozellikleri-obj_langu  = 'T'.
+gs_mailozellikleri-obj_name   = 'message'.
+gs_mailozellikleri-obj_descr  = 'HEADER!!'.
+
+
+gs_mailicerigi-line = line1.
+APPEND gs_mailicerigi TO gt_mailicerigi.
+
+
+* Veri tablosu bilgileri
+gs_icerikbilgileri-transf_bin = space.
+gs_icerikbilgileri-head_start = 1.
+gs_icerikbilgileri-head_num   = 0.
+gs_icerikbilgileri-body_start = 1.
+DESCRIBE TABLE gt_mailicerigi LINES gs_icerikbilgileri-body_num.
+gs_icerikbilgileri-doc_type   = 'HTM'.
+APPEND gs_icerikbilgileri TO gt_icerikbilgileri.
+
+CALL FUNCTION 'SO_DOCUMENT_SEND_API1'
+  EXPORTING
+    document_data              = gs_mailozellikleri
+    commit_work                = 'X'
+    sender_address             = gv_gonderen
+    sender_address_type        = 'INT'
+  TABLES
+    packing_list               = gt_icerikbilgileri
+    contents_txt               = gt_mailicerigi
+    receivers                  = gt_alicibilgileri.
+
+IF sy-subrc <> 0.
+  MESSAGE ID sy-msgid TYPE sy-msgty NUMBER sy-msgno
+    WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+ENDIF.
+
+IF sy-subrc eq 0.
+WRITE 'Mail sent.'.
+ENDIF.
